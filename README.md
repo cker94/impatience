@@ -1,2 +1,2 @@
 # impatience
-Klondike Solitair solver written in Go.
+In the making: Klondike Solitair solver written in Go.
