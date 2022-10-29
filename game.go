@@ -1,40 +1,26 @@
 package impatience
 
-struct StockDeck {
-  List *Deck
-  Pos uint8
-  LoopCount uint8
-}
-
-
 // To save memory, only deep copy lists that will change.
-struct Game {
-  Stock StockDeck
-  Tableau [7]*Deck
-  Foundations [4]*Deck
-  PrevMoves []*Moves
-  NextMoves []*Moves
+type Game struct {
+	Stacks    [9][]*Card
+	StockPos  uint8
+	StockLoop uint8
+	PrevMoves []*Move
+	NextMoves []*Move
 }
 
 func NewGame() *Game {
-  var game Game
-  game.Stock.List = new(Deck)
-  var game Game
-  game.Foundations = [4]*Deck{
-    []Card{}, []Card{}, []Card{}, []Card{}
-  }
-  game.Tableau = [7][]Card{
-    []Card{}, []Card{}, []Card{}, []Card{},
-    []Card{}, []Card{}, []Card{}
-  }
-} 
-
-struct Move {
-  Subject *Card
-  From *Deck
-  To *Deck
+	var game Game
+	for i := 0; i < len(game.Stacks); i++ {
+		game.Stacks[i] = make([]*Card, i+1)
+	}
+	game.PrevMoves = []*Move{}
+	game.NextMoves = make([]*Move, 10)
+	return &game
 }
 
-struct State {
-  Moves
+type Move struct {
+	Subject *Card
+	From    StackID
+	To      StackID
 }

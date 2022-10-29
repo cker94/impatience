@@ -1,20 +1,15 @@
 package impatience
 
-struct Deck {
-  Category DeckName
-  First *Card
-  Last *Card
-}
+type StackID int
 
-type DeckName int
 const (
-  Stock = Location iota
-  Foundations
-  Tableau1
-  Tableau2
-  Tableau3
-  Tableau4
-  Tableau5
-  Tableau6
-  Tableau7
+	STOCK StackID = iota
+	TABLEAU_1
+	TABLEAU_2
+	TABLEAU_3
+	TABLEAU_4
+	TABLEAU_5
+	TABLEAU_6
+	TABLEAU_7
+	FOUNDATIONS
 )

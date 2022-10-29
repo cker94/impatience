@@ -1,7 +1,6 @@
 package impatience
 
-const GameStates map[string]...
+var GameStates map[string]*Move
 
 func main() {
-  
 }
