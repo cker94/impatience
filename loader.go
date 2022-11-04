@@ -1,7 +1,9 @@
-package impatience
+package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,61 +12,140 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-type savedGame struct {
+type SaveData struct {
 	Stock struct {
-		List      []string
-		Pos       uint8
-		LoopCount uint8
+		Limit int
+		Loop  int
+		Pos   int
+		Stack []string
 	}
-	Tableau     [7][]string
-	Foundations [4][]string
+	Tableau struct {
+		Stacks   [7][]string
+		Facedown []int
+	}
+	Foundations map[string][]string
 }
 
-// TODO: Load game from file
-func LoadGame(path string) (*Game, error) {
-	var save savedGame
+func LoadFile(path string) (*SaveData, error) {
+	var save *SaveData
 	// Open file.
-	if file, err := os.Open(path); err != nil {
-		return nil, err
-	} else {
-		// Whatever happens, close file when function exits.
-		defer file.Close()
-		// Read file into memory.
-		if contents, err := io.ReadAll(file); err != nil {
-			return nil, err
-		} else {
-			// Check if format is JSON or TOML.
-			var err error
-			ext := filepath.Ext(path)
-			switch {
-			case ext == ".json":
-				json.Unmarshal(contents, &save)
-			case ext == ".toml":
-				toml.Unmarshal(contents, &save)
-			}
-			if err != nil {
-				return nil, err
-			}
-		}
+	file, openerr := os.Open(path)
+	if openerr != nil {
+		return nil, openerr
+	}
+	defer file.Close()
+
+	// Read file into memory.
+	contents, readerr := io.ReadAll(file)
+	if readerr != nil {
+		return nil, readerr
 	}
 
-	game := NewGame()
+	// Check if format is JSON or TOML.
+	var unmarsherr error
+	ext := filepath.Ext(path)
+	switch {
+	case ext == ".json":
+		unmarsherr = json.Unmarshal(contents, save)
+	case ext == ".toml":
+		unmarsherr = toml.Unmarshal(contents, save)
+	}
+	if unmarsherr != nil {
+		return nil, unmarsherr
+	}
+
+	return save, nil
+}
+
+// Load game from file
+// TODO: Add unit tests.
+func (game *Game) Import(save *SaveData) error {
+	var r Register
 
 	// Load stock from save data.
-	game.StockPos = save.Stock.Pos
-	game.StockLoop = save.Stock.LoopCount
-	size := len(save.Stock.List)
-	stockList := make([]*Card, size, size)
-	for i, code := range save.Stock.List {
-		stockList[i] = ParseCardCode(code)
+	game.Stock.Limit = save.Stock.Limit
+	game.Stock.Loop = save.Stock.Loop
+	game.Stock.Pos = save.Stock.Pos
+	if stack, err := r.AddCards(save.Stock.Stack); err != nil {
+		return err
+	} else {
+		game.Stock.Stack = stack
 	}
-	game.Stacks[STOCK] = stockList
 
-	return game, nil
+	// Load tableau.
+	var fdTotal int // Count total facedown cards
+	if len(save.Tableau.Facedown) != len(save.Tableau.Stacks) {
+		return errors.New("tableau.stacks and tableau.facedown lengths do not match.")
+	}
+	for i, codes := range save.Tableau.Stacks {
+		facedown := game.Tableau.Facedown[i]
+		fdTotal += facedown
+		if facedown >= len(codes) {
+			return errors.New(
+				fmt.Sprintf("Tableau %d is invalid: Top card must not be facedown: %d cards; %d facedown.", i, len(codes), facedown),
+			)
+		}
+		if stack, err := r.AddCards(codes); err != nil {
+			return err
+		} else {
+			game.Tableau.Stacks[i] = stack
+		}
+	}
+	if fdTotal > 21 {
+		return errors.New(fmt.Sprint("Facedown cards exceed max of 21:", fdTotal))
+	}
+	InitSliceList[*Card](game.Tableau.Stacks[:], 0, 0)
+
+	// Load foundations.
+	for key, codes := range save.Foundations {
+		var suit CardSuit
+		switch {
+		case key == "spades":
+			suit = SPADES
+		case key == "clubs":
+			suit = CLUBS
+		case key == "hearts":
+			suit = HEARTS
+		case key == "diamonds":
+			suit = DIAMONDS
+		default:
+			return errors.New("Unrecognized foundation name: " + key)
+		}
+
+		size := len(codes)
+		stack := make([]*Card, size, size)
+		for i, code := range codes {
+			card, err := r.AddCard(code)
+			if err != nil {
+				return err
+			}
+			if card.Suit == suit {
+				stack[i] = card
+			} else {
+				return errors.New(
+					fmt.Sprintf("Suit mismatch in %s foundation: %s at index %d", key, code, i),
+				)
+			}
+		}
+		game.Foundations[suit] = stack
+	}
+	InitSliceList[*Card](game.Foundations[:], 0, 0)
+
+	return nil
 }
 
-func ParseCardCode(code string) *Card {
+func InitSliceList[T any](slice [][]T, s ...int) {
+	for i := 0; i < len(slice); i++ {
+		if slice[i] == nil {
+			slice[i] = make([]T, s[0], s[1])
+		}
+	}
+}
+
+func ParseCard(code string) (*Card, error) {
 	var card Card
+	size := len(code)
+
 	// Normalize casing to make parsing case-insensitve.
 	code = strings.ToUpper(code)
 
@@ -83,47 +164,163 @@ func ParseCardCode(code string) *Card {
 	case 'D':
 		card.Suit = DIAMONDS
 		card.Color = RED
-	default:
+	case '?':
 		card.Suit = UNKNOWN_SUIT
 		card.Color = UNKNOWN_COLOR
-	}
-
-	// Get rank from second char
-	rank := code[1]
-	switch rank {
-	case 'A':
-		card.Rank = ACE
-	case '2':
-		card.Rank = TWO
-	case '3':
-		card.Rank = THREE
-	case '4':
-		card.Rank = FOUR
-	case '5':
-		card.Rank = FIVE
-	case '6':
-		card.Rank = SIX
-	case '7':
-		card.Rank = SEVEN
-	case '8':
-		card.Rank = EIGHT
-	case '9':
-		card.Rank = NINE
-	case '1':
-		card.Rank = TEN
-	case 'J':
-		card.Rank = JACK
-	case 'Q':
-		card.Rank = QUEEN
-	case 'K':
-		card.Rank = KING
 	default:
-		card.Rank = UNKNOWN_RANK
+		return nil, errors.New(
+			fmt.Sprintf("Unrecognized card suit code %v in %q", suit, code),
+		)
 	}
 
-	// Determine if card is faceup or facedown from last char.
-	facing := code[len(code)-1]
-	card.Faceup = facing != 'D'
+	// Get rank from second char.
+	switch size {
+	case 0, 1:
+		return nil, errors.New("Subceeds min code length (2): " + code)
+	case 2:
+		switch code[1] {
+		case 'A':
+			card.Rank = ACE
+		case '2':
+			card.Rank = TWO
+		case '3':
+			card.Rank = THREE
+		case '4':
+			card.Rank = FOUR
+		case '5':
+			card.Rank = FIVE
+		case '6':
+			card.Rank = SIX
+		case '7':
+			card.Rank = SEVEN
+		case '8':
+			card.Rank = EIGHT
+		case '9':
+			card.Rank = NINE
+		case '1':
+			card.Rank = TEN
+		case 'J':
+			card.Rank = JACK
+		case 'Q':
+			card.Rank = QUEEN
+		case 'K':
+			card.Rank = KING
+		case '?':
+			card.Rank = UNKNOWN_RANK
+		default:
+			return nil, errors.New(
+				fmt.Sprintf("Unrecognized card rank code %v in %q.", code[1], code),
+			)
+		}
+	case 3:
+		if code[1:3] == "10" {
+			card.Rank = 10
+		} else {
+			return nil, errors.New(
+				fmt.Sprintf("Unrecognized card rank code %v in %q.", code[1:3], code),
+			)
+		}
+	default:
+		return nil, errors.New("Exceeds max code length (3): " + code)
+	}
 
-	return &card
+	return &card, nil
+}
+
+func ParseCards(codes []string) ([]*Card, error) {
+	size := len(codes)
+	stack := make([]*Card, size, size)
+	for i, code := range codes {
+		card, err := ParseCard(code)
+		if err != nil {
+			return nil, err
+		}
+		stack[i] = card
+	}
+	return stack, nil
+}
+
+type Register struct {
+	Cards map[string]struct{}
+	Suits map[CardSuit]int
+	Ranks map[CardRank]int
+	Total int
+}
+
+func (r *Register) AddCard(code string) (card *Card, err error) {
+	card, err = ParseCard(code)
+	if err != nil {
+		return nil, err
+	}
+
+	// Prevent duplicate cards.
+	id := card.Id()
+	if !strings.Contains(id, "?") {
+		if _, set := r.Cards[id]; set {
+			return nil, errors.New("Found duplicate card.")
+		} else {
+			r.Cards[id] = struct{}{}
+		}
+	}
+
+	// Prevent invalid deck.
+	var (
+		suitTotal, rankTotal int
+		ok                   bool
+	)
+	invalids := make([]string, 0, 3)
+
+	// Count all cards.
+	r.Total++
+	if r.Total > 52 {
+		invalids = append(invalids, "too many cards.")
+	}
+
+	// Count cards by suit.
+	suitTotal, ok = r.Suits[card.Suit]
+	if ok {
+		suitTotal++
+		r.Suits[card.Suit] = suitTotal
+	} else {
+		r.Suits[card.Suit] = 1
+	}
+	if suitTotal > 13 {
+		invalids = append(invalids,
+			fmt.Sprint("too many", SuitName(card.Suit), "cards"),
+		)
+	}
+
+	// Count cards by rank.
+	rankTotal, ok = r.Ranks[card.Rank]
+	if ok {
+		rankTotal++
+		r.Ranks[card.Rank] = rankTotal
+	} else {
+		r.Ranks[card.Rank] = 1
+	}
+	if rankTotal > 4 {
+		invalids = append(invalids,
+			fmt.Sprint("too many", RankName(card.Rank), "cards"),
+		)
+	}
+
+	// check for errors.
+	if len(invalids) > 0 {
+		return nil, errors.New(strings.Join(invalids, ", ") + ".")
+	}
+
+	return
+}
+
+func (r *Register) AddCards(codes []string) (card []*Card, err error) {
+	size := len(codes)
+	stack := make([]*Card, size, size)
+	for i, code := range codes {
+		card, err := r.AddCard(code)
+		if err != nil {
+			return nil, err
+		}
+		stack[i] = card
+	}
+	return stack, nil
 }

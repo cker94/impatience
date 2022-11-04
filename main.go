@@ -1,4 +1,4 @@
-package impatience
+package main
 
 var GameStates map[string]*Move
 

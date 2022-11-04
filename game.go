@@ -1,26 +1,52 @@
-package impatience
+package main
 
-// To save memory, only deep copy lists that will change.
+const (
+	FOUNDATION int = iota
+	TABLEAU
+	STOCK
+)
+
+/*const (
+	FOUNDATION_1 int = iota
+	FOUNDATION_2
+	FOUNDATION_3
+	FOUNDATION_4
+	TABLEAU_1
+	TABLEAU_2
+	TABLEAU_3
+	TABLEAU_4
+	TABLEAU_5
+	TABLEAU_6
+	TABLEAU_7
+)*/
+
 type Game struct {
-	Stacks    [9][]*Card
-	StockPos  uint8
-	StockLoop uint8
-	PrevMoves []*Move
-	NextMoves []*Move
-}
-
-func NewGame() *Game {
-	var game Game
-	for i := 0; i < len(game.Stacks); i++ {
-		game.Stacks[i] = make([]*Card, i+1)
+	Foundations [4][]*Card
+	Stock       struct {
+		Limit int
+		Loop  int
+		Pos   int
+		Stack []*Card
 	}
-	game.PrevMoves = []*Move{}
-	game.NextMoves = make([]*Move, 10)
-	return &game
+	Tableau struct {
+		Facedown [7]int
+		Stacks   [7][]*Card
+	}
+	Moves struct {
+		Prev []*Move
+		Next []*Move
+	}
 }
 
 type Move struct {
-	Subject *Card
-	From    StackID
-	To      StackID
+	Card *Card
+	To   struct {
+		Category int
+		Stack    int
+	}
+	From struct {
+		Category int
+		Stack    int
+		Index    int
+	}
 }

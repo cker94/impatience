@@ -1,0 +1,23 @@
+[stock]
+  limit = 3
+  loop  = 0
+  pos   = 0
+  stack = ["sA", "sK", "c2", "cK", "sQ", "s4", "d5", "c3", "c10", "dJ", "cA", "cQ", "h9", "hQ", "d4", "h4", "d3", "hA", "s6", "c4", "d2", "cJ", "h7", "d10"]
+
+[tableau]
+  stacks = [
+    [ "d7" ],
+    [ "c9", "h10" ],
+    [ "h2", "s8", "h5" ],
+    [ "c6", "h3", "s9", "c8" ],
+    [ "s5", "c7", "dA", "c5", "s2" ],
+    [ "??", "??", "??", "??", "sJ", "s10" ],
+    [ "hK", "h6", "dK", "d8", "s7", "h8", "d9" ]
+  ]
+  facedown = [0,1,2,3,4,5,6]
+
+[foundations]
+  spades   = []
+  clubs    = []
+  hearts   = []
+  diamonds = []
