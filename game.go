@@ -6,20 +6,6 @@ const (
 	STOCK
 )
 
-/*const (
-	FOUNDATION_1 int = iota
-	FOUNDATION_2
-	FOUNDATION_3
-	FOUNDATION_4
-	TABLEAU_1
-	TABLEAU_2
-	TABLEAU_3
-	TABLEAU_4
-	TABLEAU_5
-	TABLEAU_6
-	TABLEAU_7
-)*/
-
 type Game struct {
 	Foundations [4][]*Card
 	Stock       struct {

@@ -1,6 +1,11 @@
 package main
 
-import "log"
+import (
+	"errors"
+	"fmt"
+	"log"
+	"strings"
+)
 
 type CardRank int
 
@@ -164,4 +169,102 @@ func ColorName(color CardColor) string {
 	}
 	log.Panicln("Out of bounds card color:", color)
 	return ""
+}
+
+func ParseCard(code string) (*Card, error) {
+	var card Card
+	size := len(code)
+
+	// Normalize casing to make parsing case-insensitve.
+	code = strings.ToUpper(code)
+
+	// Get suit from first char.
+	suit := code[0]
+	switch suit {
+	case 'S':
+		card.Suit = SPADES
+		card.Color = BLACK
+	case 'C':
+		card.Suit = CLUBS
+		card.Color = BLACK
+	case 'H':
+		card.Suit = HEARTS
+		card.Color = RED
+	case 'D':
+		card.Suit = DIAMONDS
+		card.Color = RED
+	case '?':
+		card.Suit = UNKNOWN_SUIT
+		card.Color = UNKNOWN_COLOR
+	default:
+		return nil, errors.New(
+			fmt.Sprintf("Unrecognized card suit code %v in %q", suit, code),
+		)
+	}
+
+	// Get rank from second char.
+	switch size {
+	case 0, 1:
+		return nil, errors.New("Subceeds min code length (2): " + code)
+	case 2:
+		switch code[1] {
+		case 'A':
+			card.Rank = ACE
+		case '2':
+			card.Rank = TWO
+		case '3':
+			card.Rank = THREE
+		case '4':
+			card.Rank = FOUR
+		case '5':
+			card.Rank = FIVE
+		case '6':
+			card.Rank = SIX
+		case '7':
+			card.Rank = SEVEN
+		case '8':
+			card.Rank = EIGHT
+		case '9':
+			card.Rank = NINE
+		case '1':
+			card.Rank = TEN
+		case 'J':
+			card.Rank = JACK
+		case 'Q':
+			card.Rank = QUEEN
+		case 'K':
+			card.Rank = KING
+		case '?':
+			card.Rank = UNKNOWN_RANK
+		default:
+			return nil, errors.New(
+				fmt.Sprintf("Unrecognized card rank code %v in %q.", code[1], code),
+			)
+		}
+	case 3:
+		if code[1:3] == "10" {
+			card.Rank = TEN
+		} else {
+			return nil, errors.New(
+				fmt.Sprintf("Unrecognized card rank code %v in %q.", code[1:3], code),
+			)
+		}
+	default:
+		return nil, errors.New("Exceeds max code length (3): " + code)
+	}
+
+	return &card, nil
+}
+
+func ParseCards(codes []string) ([]*Card, error) {
+	size := len(codes)
+	stack := make([]*Card, size, size)
+	for i, code := range codes {
+		card, err := ParseCard(code)
+		if err != nil {
+			return nil, err
+		}
+		stack[i] = card
+	}
+	return stack, nil
 }
