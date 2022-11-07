@@ -27,7 +27,8 @@ type SaveData struct {
 }
 
 func LoadFile(path string) (*SaveData, error) {
-	var save *SaveData
+	save := new(SaveData)
+
 	// Open file.
 	file, openerr := os.Open(path)
 	if openerr != nil {
