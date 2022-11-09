@@ -142,7 +142,7 @@ func TestSuitName(t *testing.T) {
 		UNKNOWN_SUIT: "unknown suit",
 	}
 	bad := []CardSuit{-1, 5}
-	mapTest[CardSuit, string](t, SuitName, tests)
+	mapTest(t, SuitName, tests)
 	shouldPanicAll(t, SuitName, bad)
 }
 
@@ -164,7 +164,7 @@ func TestRankName(t *testing.T) {
 		UNKNOWN_RANK: "unknown rank",
 	}
 	bad := []CardRank{-1, 14}
-	mapTest[CardRank, string](t, RankName, tests)
+	mapTest(t, RankName, tests)
 	shouldPanicAll(t, RankName, bad)
 }
 
@@ -175,7 +175,7 @@ func TestColorName(t *testing.T) {
 		UNKNOWN_COLOR: "unknown color",
 	}
 	bad := []CardColor{-1, 3}
-	mapTest[CardColor, string](t, ColorName, tests)
+	mapTest(t, ColorName, tests)
 	shouldPanicAll(t, ColorName, bad)
 }
 
