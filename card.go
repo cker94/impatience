@@ -197,9 +197,7 @@ func ParseCard(code string) (*Card, error) {
 		card.Suit = UNKNOWN_SUIT
 		card.Color = UNKNOWN_COLOR
 	default:
-		return nil, errors.New(
-			fmt.Sprintf("Unrecognized card suit code %v in %q", suit, code),
-		)
+		return nil, fmt.Errorf("Unrecognized card suit code %v in %q", suit, code)
 	}
 
 	// Get rank from second char.
@@ -237,17 +235,13 @@ func ParseCard(code string) (*Card, error) {
 		case '?':
 			card.Rank = UNKNOWN_RANK
 		default:
-			return nil, errors.New(
-				fmt.Sprintf("Unrecognized card rank code %v in %q.", code[1], code),
-			)
+			return nil, fmt.Errorf("Unrecognized card rank code %v in %q.", code[1], code)
 		}
 	case 3:
 		if code[1:3] == "10" {
 			card.Rank = TEN
 		} else {
-			return nil, errors.New(
-				fmt.Sprintf("Unrecognized card rank code %v in %q.", code[1:3], code),
-			)
+			return nil, fmt.Errorf("Unrecognized card rank code %v in %q.", code[1:3], code)
 		}
 	default:
 		return nil, errors.New("Exceeds max code length (3): " + code)

@@ -20,7 +20,7 @@ type SaveData struct {
 		Stack []string
 	}
 	Tableau struct {
-		Stacks   [7][]string
+		Stacks   [][]string
 		Facedown []int
 	}
 	Foundations map[string][]string
@@ -61,7 +61,7 @@ func LoadFile(path string) (*SaveData, error) {
 // Load game from file
 // TODO: Add unit tests.
 func (game *Game) Import(save *SaveData) error {
-	var r Register
+	r := NewRegister()
 
 	// Load stock from save data.
 	game.Stock.Limit = save.Stock.Limit
@@ -75,27 +75,29 @@ func (game *Game) Import(save *SaveData) error {
 
 	// Load tableau.
 	var fdTotal int // Count total facedown cards
-	if len(save.Tableau.Facedown) != len(save.Tableau.Stacks) {
+	tbSize := len(save.Tableau.Stacks)
+	if tbSize > 7 {
+		return fmt.Errorf("Number of stacks in tableau exceed max of 7 with %d stacks.", tbSize)
+	}
+	if len(save.Tableau.Facedown) != tbSize {
 		return errors.New("tableau.stacks and tableau.facedown lengths do not match.")
 	}
 	for i, codes := range save.Tableau.Stacks {
-		facedown := game.Tableau.Facedown[i]
+		facedown := save.Tableau.Facedown[i]
 		fdTotal += facedown
 		if facedown >= len(codes) {
-			return errors.New(
-				fmt.Sprintf("Tableau %d is invalid: Top card must not be facedown: %d cards; %d facedown.", i, len(codes), facedown),
-			)
+			return fmt.Errorf("Tableau %d is invalid: Top card must not be facedown: %d cards; %d facedown.", i, len(codes), facedown)
 		}
 		if stack, err := r.AddCards(codes); err != nil {
 			return err
 		} else {
 			game.Tableau.Stacks[i] = stack
+			game.Tableau.Facedown[i] = facedown
 		}
 	}
 	if fdTotal > 21 {
-		return errors.New(fmt.Sprint("Facedown cards exceed max of 21:", fdTotal))
+		return fmt.Errorf("Facedown cards exceed max of 21 with %d cards.", fdTotal)
 	}
-	InitSliceList[*Card](game.Tableau.Stacks[:], 0, 0)
 
 	// Load foundations.
 	for key, codes := range save.Foundations {
@@ -123,24 +125,16 @@ func (game *Game) Import(save *SaveData) error {
 			if card.Suit == suit {
 				stack[i] = card
 			} else {
-				return errors.New(
-					fmt.Sprintf("Suit mismatch in %s foundation: %s at index %d", key, code, i),
-				)
+				return fmt.Errorf("Suit mismatch in %s foundation: %s at index %d", key, code, i)
 			}
 		}
 		game.Foundations[suit] = stack
 	}
-	InitSliceList[*Card](game.Foundations[:], 0, 0)
+	if r.Total != 52 {
+		return fmt.Errorf("Found %d cards. Game requires 52 total cards.", r.Total)
+	}
 
 	return nil
-}
-
-func InitSliceList[T any](slice [][]T, s ...int) {
-	for i := 0; i < len(slice); i++ {
-		if slice[i] == nil {
-			slice[i] = make([]T, s[0], s[1])
-		}
-	}
 }
 
 type Register struct {
@@ -148,6 +142,14 @@ type Register struct {
 	Suits map[CardSuit]int
 	Ranks map[CardRank]int
 	Total int
+}
+
+func NewRegister() *Register {
+	var r Register
+	r.Cards = make(map[string]struct{})
+	r.Suits = make(map[CardSuit]int)
+	r.Ranks = make(map[CardRank]int)
+	return &r
 }
 
 func (r *Register) AddCard(code string) (card *Card, err error) {
