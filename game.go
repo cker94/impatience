@@ -36,3 +36,10 @@ type Move struct {
 		Index    int
 	}
 }
+
+func copyAppend[T any](slice []T, elems ...T) []T {
+	size := len(slice) + len(elems)
+	out := make([]T, 0, size)
+	copy(out, slice)
+	return append(out, elems...)
+}
