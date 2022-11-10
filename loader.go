@@ -178,6 +178,7 @@ func (r *Register) AddCard(code string) (card *Card, err error) {
 	// Count all cards.
 	r.Total++
 	if r.Total > 52 {
+		r.Total--
 		invalids = append(invalids, "too many cards.")
 	}
 
@@ -190,6 +191,7 @@ func (r *Register) AddCard(code string) (card *Card, err error) {
 		r.Suits[card.Suit] = 1
 	}
 	if suitTotal > 13 {
+		suitTotal--
 		invalids = append(invalids,
 			fmt.Sprint("too many", SuitName(card.Suit), "cards"),
 		)
@@ -204,6 +206,7 @@ func (r *Register) AddCard(code string) (card *Card, err error) {
 		r.Ranks[card.Rank] = 1
 	}
 	if rankTotal > 4 {
+		rankTotal--
 		invalids = append(invalids,
 			fmt.Sprint("too many", RankName(card.Rank), "cards"),
 		)

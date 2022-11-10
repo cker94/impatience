@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TODO: Add more variations of toml and json files to load.
 func TestLoadFile(t *testing.T) {
 	var exp SaveData
 	inputs := []string{"game.toml", "game.json"}
@@ -59,6 +60,7 @@ expected: %s
 	}
 }
 
+// TODO: add more variations to test.
 func TestImport(t *testing.T) {
 	var exp Game
 	inputs := []string{"game.toml", "game.json"}
@@ -69,13 +71,13 @@ func TestImport(t *testing.T) {
 	}
 	// exp tableau values.
 	exp.Tableau.Stacks = [7][]*Card{
-		{&Card{SEVEN, DIAMONDS, RED}},
-		{&Card{NINE, CLUBS, BLACK}, &Card{TEN, HEARTS, RED}},
-		{&Card{TWO, HEARTS, RED}, &Card{EIGHT, SPADES, BLACK}, &Card{FIVE, HEARTS, RED}},
-		{&Card{SIX, CLUBS, BLACK}, &Card{THREE, HEARTS, RED}, &Card{NINE, SPADES, BLACK}, &Card{EIGHT, CLUBS, BLACK}},
-		{&Card{FIVE, SPADES, BLACK}, &Card{SEVEN, CLUBS, BLACK}, &Card{ACE, DIAMONDS, RED}, &Card{FIVE, CLUBS, BLACK}, &Card{TWO, SPADES, BLACK}},
-		{&Card{UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, &Card{UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, &Card{UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, &Card{UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, &Card{JACK, SPADES, BLACK}, &Card{TEN, SPADES, BLACK}},
-		{&Card{KING, HEARTS, RED}, &Card{SIX, HEARTS, RED}, &Card{KING, DIAMONDS, RED}, &Card{EIGHT, DIAMONDS, RED}, &Card{SEVEN, SPADES, BLACK}, &Card{EIGHT, HEARTS, RED}, &Card{NINE, DIAMONDS, RED}},
+		{{SEVEN, DIAMONDS, RED}},
+		{{NINE, CLUBS, BLACK}, {TEN, HEARTS, RED}},
+		{{TWO, HEARTS, RED}, {EIGHT, SPADES, BLACK}, {FIVE, HEARTS, RED}},
+		{{SIX, CLUBS, BLACK}, {THREE, HEARTS, RED}, {NINE, SPADES, BLACK}, {EIGHT, CLUBS, BLACK}},
+		{{FIVE, SPADES, BLACK}, {SEVEN, CLUBS, BLACK}, {ACE, DIAMONDS, RED}, {FIVE, CLUBS, BLACK}, {TWO, SPADES, BLACK}},
+		{{UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, {UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, {UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, {UNKNOWN_RANK, UNKNOWN_SUIT, UNKNOWN_COLOR}, {JACK, SPADES, BLACK}, {TEN, SPADES, BLACK}},
+		{{KING, HEARTS, RED}, {SIX, HEARTS, RED}, {KING, DIAMONDS, RED}, {EIGHT, DIAMONDS, RED}, {SEVEN, SPADES, BLACK}, {EIGHT, HEARTS, RED}, {NINE, DIAMONDS, RED}},
 	}
 	exp.Tableau.Facedown = [7]int{0, 1, 2, 3, 4, 5, 6}
 	// exp foundation values.
@@ -98,7 +100,7 @@ func TestImport(t *testing.T) {
 			t.Errorf("Test %d: %v", i, loaderr)
 			continue
 		}
-		// Import data into gane
+		// Import data into game
 		if err := subject.Import(save); err != nil {
 			t.Errorf("Test %d: %v", i, loaderr)
 			continue
@@ -118,6 +120,129 @@ output:   %s
 expected: %s
 `
 			t.Errorf(msg, i, input, output, expected)
+		}
+	}
+}
+
+func TestNewRegister(t *testing.T) {
+	r := NewRegister()
+	failed := false
+	failed = r.Cards == nil
+	failed = r.Suits == nil
+	failed = r.Ranks == nil
+	failed = r.Total != 0
+	if failed {
+		t.Error("Register incorrectly initialized.")
+	}
+}
+
+func TestAddCard(t *testing.T) {
+	r := NewRegister()
+	// Test all good inputs.
+	for i, expected := range testCards[:52] {
+		card, err := r.AddCard(testCodes[i])
+		if err != nil {
+			t.Errorf("Test Add %s: %v", testCodes[i], err)
+		}
+		if *card != *expected {
+			outJSON, _ := json.Marshal(card)
+			expJSON, _ := json.Marshal(expected)
+			t.Errorf("Test Add %s: output did not match expected: output: %s; expected: %s", testCodes[i], outJSON, expJSON)
+		}
+	}
+	// Test that duplicates are rejected and no more cards than total can be added.
+	// TODO: consider adding different error types to ensure the correct type of error is handling the right error.
+	bad := []string{"sA", "c2", "hQ", "dK", "??"}
+	for _, b := range bad {
+		if _, err := r.AddCard(b); err == nil {
+			t.Errorf("Expected error from: (Register).AddCard(%q).", b)
+		}
+	}
+	// Test suit constraints.
+	for suit := CardSuit(0); suit < UNKNOWN_SUIT; suit++ {
+		// Setup
+		r = NewRegister()
+		for rank := ACE; rank < UNKNOWN_RANK; rank++ {
+			id := (&Card{rank, suit, 0}).Id()
+			if _, err := r.AddCard(id); err != nil {
+				t.Errorf("Suit constraints test setup error with %s: %v", id, err)
+			}
+		}
+		// Test
+		extra := (&Card{UNKNOWN_RANK, suit, 0}).Id()
+		if _, err := r.AddCard(extra); err == nil {
+			t.Errorf("Expected error from: (Register).AddCard(%q).", extra)
+		}
+	}
+	// Test rank constraints.
+	for rank := ACE; rank < UNKNOWN_RANK; rank++ {
+		// Setup
+		r = NewRegister()
+		for suit := CardSuit(0); suit < UNKNOWN_SUIT; suit++ {
+			id := (&Card{rank, suit, 0}).Id()
+			if _, err := r.AddCard(id); err != nil {
+				t.Errorf("Rank constraints test setup error with %s: %v", id, err)
+			}
+		}
+		// Test
+		extra := (&Card{rank, UNKNOWN_SUIT, 0}).Id()
+		if _, err := r.AddCard(extra); err == nil {
+			t.Errorf("Expected error from: (Register).AddCard(%q).", extra)
+		}
+	}
+}
+
+func TestAddCards(t *testing.T) {
+	r := NewRegister()
+	// Test all good inputs.
+	expected := testCards[:52]
+	cards, err := r.AddCards(testCodes[:52])
+	if err != nil {
+		t.Errorf("Test Add All: %v", err)
+	}
+	outJSON, omerr := json.Marshal(cards)
+	expJSON, emerr := json.Marshal(expected)
+	if omerr != nil || emerr != nil {
+		t.Error("Testing failure:", omerr, emerr)
+	}
+	if bytes.Compare(outJSON, expJSON) != 0 {
+		t.Errorf("Test Add All: output did not match expected: output: %s; expected: %s", outJSON, expJSON)
+	}
+	bad := []string{"sA", "c2", "hQ", "dK", "??"}
+	for i := 0; i < len(bad); i++ {
+		if _, err := r.AddCards(bad[i:]); err == nil {
+			t.Errorf("Expected error from: (Register).AddCard(%q).", bad[i:])
+		}
+	}
+	// Test suit constraints.
+	for start := 0; start < 52; start += 13 {
+		// Setup
+		r = NewRegister()
+		end := start + 13
+		if _, err := r.AddCards(testCodes[start:end]); err != nil {
+			t.Errorf("Suit of %s constraints test setup error: %v", SuitName(testCards[start].Suit), err)
+		}
+		// Test
+		extra := (&Card{UNKNOWN_RANK, testCards[start].Suit, 0}).Id()
+		if _, err := r.AddCard(extra); err == nil {
+			t.Errorf("Expected error from: (Register).AddCard(%q).", extra)
+		}
+	}
+	// Test rank constraints.
+	for rank := ACE; rank < UNKNOWN_RANK; rank++ {
+		// Setup
+		r = NewRegister()
+		ids := make([]string, 0, 4)
+		for suit := CardSuit(0); suit < UNKNOWN_SUIT; suit++ {
+			ids = append(ids, (&Card{rank, suit, 0}).Id())
+		}
+		if _, err := r.AddCards(ids); err != nil {
+			t.Errorf("Rank %s constraints test setup error: %v", RankName(rank), err)
+		}
+		// Test
+		extra := []string{(&Card{rank, UNKNOWN_SUIT, 0}).Id()}
+		if _, err := r.AddCards(extra); err == nil {
+			t.Errorf("Expected error from: (Register).AddCard(%q).", extra)
 		}
 	}
 }
