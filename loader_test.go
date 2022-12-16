@@ -34,6 +34,7 @@ func TestLoadFile(t *testing.T) {
 	expected, marsherr := json.Marshal(exp)
 	if marsherr != nil {
 		t.Error("Setup error:", marsherr)
+		t.SkipNow()
 	}
 
 	// Begin testing.
@@ -89,6 +90,7 @@ func TestImport(t *testing.T) {
 	expected, marsherr := json.Marshal(exp)
 	if marsherr != nil {
 		t.Error("Setup error:", marsherr)
+		t.SkipNow()
 	}
 
 	// Begin testing.
@@ -204,6 +206,7 @@ func TestAddCards(t *testing.T) {
 	expJSON, emerr := json.Marshal(expected)
 	if omerr != nil || emerr != nil {
 		t.Error("Testing failure:", omerr, emerr)
+		t.SkipNow()
 	}
 	if bytes.Compare(outJSON, expJSON) != 0 {
 		t.Errorf("Test Add All: output did not match expected: output: %s; expected: %s", outJSON, expJSON)

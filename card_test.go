@@ -114,6 +114,7 @@ func TestCardId(t *testing.T) {
 	size := len(inputs)
 	if len(expected) != size {
 		t.Errorf("Setup error: inputs and expected list size mismatch: %d inputs; %d expected.", len(inputs), len(expected))
+		t.SkipNow()
 	}
 	// Test all valid inputs.
 	for i := 0; i < size; i++ {
@@ -188,6 +189,7 @@ func TestParseCard(t *testing.T) {
 	size := len(inputs)
 	if len(expected) != size {
 		t.Errorf("Setup error: inputs and expected list size mismatch: %d inputs; %d expected.", len(inputs), len(expected))
+		t.SkipNow()
 	}
 	// Test all valid inputs.
 	for i := 0; i < size; i++ {
@@ -222,6 +224,7 @@ func TestParseCards(t *testing.T) {
 	size := len(inputs)
 	if len(expected) != size {
 		t.Errorf("Setup error: inputs and expected list size mismatch: %d inputs; %d expected.", len(inputs), len(expected))
+		t.SkipNow()
 	}
 	// Test valid input.
 	output, err := ParseCards(inputs)
