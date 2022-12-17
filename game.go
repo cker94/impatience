@@ -6,7 +6,13 @@ const (
 	STOCK
 )
 
-type Game struct {
+type GlobalGame struct {
+  state  GameState
+  memories map[string][]GameMemory
+  solutions chan []*Move
+}
+
+type GameState struct {
 	Foundations [4][]*Card
 	Stock       struct {
 		Limit int
@@ -24,6 +30,12 @@ type Game struct {
 	}
 }
 
+type GameMemory struct {
+  MoveCount int
+  NextMoves []*Move
+}
+
+
 type Move struct {
 	Card *Card
 	To   struct {
@@ -36,6 +48,13 @@ type Move struct {
 		Index    int
 	}
 }
+
+
+func (*Game) Solve() {
+  memory = make(map[string][]GameMemory)
+}
+
+func Play(game Game, move Move) {}
 
 func copyAppend[T any](slice []T, elems ...T) []T {
 	size := len(slice) + len(elems)
